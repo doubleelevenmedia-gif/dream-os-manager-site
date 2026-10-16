@@ -25,7 +25,27 @@ el('logout').addEventListener('click',async()=>{await sb.auth.signOut();showLogi
 el('reset').addEventListener('click',async()=>{const email=el('email').value.trim();if(!email){showMessage('Enter your work email first.',true);return;}setBusy(true);const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});setBusy(false);showMessage(error?'Password recovery could not be requested. Contact the administrator.':'If this email has an account, a recovery link may be sent. Use the same device to open it.',!!error);});
 el('recovery-form').addEventListener('submit',async(e)=>{e.preventDefault();const password=el('new-password').value;if(password.length<12){showMessage('Use at least 12 characters.',true);return;}const {error}=await sb.auth.updateUser({password});el('new-password').value='';if(error){showMessage('Password setup failed. Please request a new recovery link.',true);return;}await sb.auth.signOut();showLogin('Password set successfully. Sign in using your new password.');});
 sb.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY'){recoveryMode=true;el('login-form').classList.add('hidden');el('reset').classList.add('hidden');el('recovery-form').classList.remove('hidden');el('dashboard').classList.add('hidden');showMessage('Choose a new password of at least 12 characters.');}});
-const isRecoveryLink=location.hash.includes('type=recovery')||new URLSearchParams(location.search).get('type')==='recovery';
-if(!isRecoveryLink)await fetchDashboard();
 
+const params = new URLSearchParams(location.search);
+const isRecoveryLink =
+  location.hash.includes('type=recovery') ||
+  params.get('type') === 'recovery' ||
+  params.has('code');
+
+if (isRecoveryLink) {
+  const { data, error } = await sb.auth.getSession();
+
+  if (!error && data.session) {
+    recoveryMode = true;
+    el('login-form').classList.add('hidden');
+    el('reset').classList.add('hidden');
+    el('recovery-form').classList.remove('hidden');
+    el('dashboard').classList.add('hidden');
+    showMessage('Choose a new password of at least 12 characters.');
+  } else {
+    showMessage('Recovery session not found. Request a new reset link.', true);
+  }
+} else {
+  await fetchDashboard();
+}
 </script></body></html>
